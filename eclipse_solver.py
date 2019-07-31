@@ -107,9 +107,9 @@ def f(y, t):
     for i in range(nb_bodies):
         for j in range(0, nb_bodies):
             if i != j:
-                a = y[j] - y[i]
-                d = a[0]**2 + a[1]**2 + a[2]**2  # squarred distance
-                s[i][3:6] += a[0:3] / d**1.5 * masses[j]
+                a = y[j][0:3] - y[i][0:3] # p_j - p_i
+                d3 = sum(a**2)**1.5  # squarred then cubed distance
+                s[i][3:6] += a / d3 * masses[j]
         s[i][3:6] *= G
         s[i][0:3] = y[i][3:6]
     y = y.reshape(nb_bodies * 6)
@@ -137,26 +137,23 @@ init_date = dat.datetime(2016, 3, 1)
 end_date = dat.datetime(2016, 3, 10)
 nb_days = (end_date - init_date).days
 
-t = np.linspace(0, nb_days, 3600 * 24 * nb_days + 1)
+instants = np.linspace(0, nb_days, 3600 * 24 * nb_days + 1)
 
 # Integartion
-sol = sint.odeint(f, bodies.reshape(nb_bodies * 6), t)
-sol = sol.reshape((len(t), nb_bodies, 6))
+sol = sint.odeint(
+    f, bodies.reshape(nb_bodies * 6), instants
+).reshape((len(instants), nb_bodies, 6))
 
-partial_eclipse = [False] * len(t)
-total_eclipse = [False] * len(t)
+partial_eclipse = [False] * len(instants)
+total_eclipse = [False] * len(instants)
 
 # Time for starting the eclispe search (One day before, 8 march, 22h)
 t0 = 3600 * 24 * (nb_days - 1) - 2 * 3600
 
-beg_partial = None
-end_partial = None
-
-beg_total = None
-end_total = None
+beg_partial = end_partial = beg_total = end_total = None
 
 # Checking for the eclipse
-for i in range(t0, len(t)):
+for i in range(t0, len(instants)):
     S, E, M = sol[i, 0, :3], sol[i, 1, :3], sol[i, 2, :3]
 
     # Is there an eclipse ?
@@ -166,17 +163,17 @@ for i in range(t0, len(t)):
 
     # Begin
     if partial_eclipse[i] and not beg_partial:
-        beg_partial = (init_date + dat.timedelta(t[i])).isoformat()
+        beg_partial = (init_date + dat.timedelta(instants[i])).isoformat()
     # End
     if not partial_eclipse[i] and beg_partial and not end_partial:
-        end_partial = (init_date + dat.timedelta(t[i])).isoformat()
+        end_partial = (init_date + dat.timedelta(instants[i])).isoformat()
 
     # Begin
     if total_eclipse[i] and not beg_total:
-        beg_total = (init_date + dat.timedelta(t[i])).isoformat()
+        beg_total = (init_date + dat.timedelta(instants[i])).isoformat()
     # End
     if not total_eclipse[i] and beg_total and not end_total:
-        end_total = (init_date + dat.timedelta(t[i])).isoformat()
+        end_total = (init_date + dat.timedelta(instants[i])).isoformat()
 
 # Printing the result
 print("Partial Eclipse")
